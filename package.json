@@ -18,13 +18,13 @@
     "dotenv": "^16.3.1",
     "express": "^4.22.1",
     "jsonwebtoken": "^9.0.0",
-    "mongodb": "^5.9.0"
-  },
-  "devDependencies": {
+    "mongodb": "^5.9.0",
+    "typescript": "^5.8.3",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "@types/jsonwebtoken": "^9.0.10"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0"
   }
 }
