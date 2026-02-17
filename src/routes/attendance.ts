@@ -78,7 +78,8 @@ router.post("/", async (req: Request, res: Response) => {
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    await db.collection("attendance").deleteOne({ _id: new ObjectId(req.params.id) });
+    const id = req.params.id as string;
+    await db.collection("attendance").deleteOne({ _id: new ObjectId(id) });
     return res.json({ success: true });
   } catch (error) {
     console.error("Error deleting attendance:", error);

@@ -90,7 +90,7 @@ marks.post('/', async (req: Request, res: Response) => {
 
 marks.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const db = getDb();
 
     await db.collection('marks').deleteOne({ _id: new ObjectId(id) });

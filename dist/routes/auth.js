@@ -5,65 +5,133 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const mongo_1 = require("../mongo");
+const mongodb_1 = require("mongodb");
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const router = (0, express_1.Router)();
-const JWT_SECRET = process.env.JWT_SECRET || 'replace_this_in_env';
-router.post('/signup', async (req, res) => {
+router.post("/signup", async (req, res) => {
     try {
-        const { email, password, fullName, role } = req.body;
-        if (!email || !password)
-            return res.status(400).json({ error: 'Missing credentials' });
+        const { email, password, full_name, role } = req.body;
+        // ✅ Role is optional, defaults to 'student'
+        if (!email || typeof email !== "string")
+            return res.status(400).json({ error: "Valid email required" });
+        if (!password || password.length < 6)
+            return res.status(400).json({ error: "Password min 6 chars" });
+        if (!full_name || typeof full_name !== "string")
+            return res.status(400).json({ error: "Full name required" });
+        const userRole = role && ["student", "faculty", "admin"].includes(role)
+            ? role
+            : "student"; // ✅ Default to student
         const db = (0, mongo_1.getDb)();
-        const users = db.collection('users');
-        const profiles = db.collection('profiles');
-        const existing = await users.findOne({ email });
-        if (existing)
-            return res.status(409).json({ error: 'User already exists' });
-        const hashed = await bcrypt_1.default.hash(password, 10);
-        const result = await users.insertOne({ email, password: hashed, createdAt: new Date() });
-        const userId = result.insertedId;
-        await profiles.insertOne({ user_id: userId?.toString?.() ?? String(userId), email, full_name: fullName || '', role: role || 'student', created_at: new Date() });
-        const token = jsonwebtoken_1.default.sign({ sub: userId.toString(), email }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, user: { id: userId.toString(), email } });
+        const existing = await db.collection("profiles").findOne({ email });
+        if (existing) {
+            return res.status(409).json({ error: "Email already registered" });
+        }
+        const hashedPassword = await bcrypt_1.default.hash(password, 10);
+        const result = await db.collection("profiles").insertOne({
+            email,
+            password: hashedPassword,
+            full_name,
+            role: userRole,
+            created_at: new Date(),
+        });
+        return res.status(201).json({
+            success: true,
+            user: {
+                id: result.insertedId.toString(),
+                email,
+                full_name,
+                role: userRole,
+            },
+        });
     }
-    catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal error' });
+    catch (error) {
+        console.error("❌ Signup error:", error);
+        return res.status(500).json({ error: "Failed to sign up" });
     }
 });
-router.post('/signin', async (req, res) => {
+router.post("/signin", async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password)
-            return res.status(400).json({ error: 'Missing credentials' });
+        const { email, password, roll_number, role } = req.body;
+        console.log("📝 Sign-in attempt:", { roll_number, role, email: email ? "***" : "none" });
         const db = (0, mongo_1.getDb)();
-        const users = db.collection('users');
-        const user = await users.findOne({ email });
-        if (!user)
-            return res.status(401).json({ error: 'Invalid credentials' });
-        const ok = await bcrypt_1.default.compare(password, user.password);
-        if (!ok)
-            return res.status(401).json({ error: 'Invalid credentials' });
-        const idStr = user._id?.toString ? user._id.toString() : String(user._id ?? user.id);
-        const token = jsonwebtoken_1.default.sign({ sub: idStr, email }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, user: { id: idStr, email } });
+        let user;
+        // For students, allow login with roll_number
+        if (role === "student" && roll_number) {
+            if (!roll_number || !password) {
+                return res.status(400).json({ error: "Roll number and password required" });
+            }
+            const student = await db.collection("students").findOne({ roll_number });
+            console.log("🔍 Student lookup:", { roll_number, found: !!student, profile_id: student?.profile_id });
+            if (!student) {
+                console.log("❌ Student not found:", roll_number);
+                return res.status(401).json({ error: "Invalid credentials" });
+            }
+            user = await db.collection("profiles").findOne({ _id: new mongodb_1.ObjectId(student.profile_id) });
+            console.log("🔍 Profile lookup:", { found: !!user, email: user?.email });
+            if (!user) {
+                console.log("❌ Profile not found for student:", roll_number);
+                return res.status(401).json({ error: "Invalid credentials" });
+            }
+        }
+        else {
+            // Faculty and others use email
+            if (!email || !password) {
+                return res.status(400).json({ error: "Email and password required" });
+            }
+            user = await db.collection("profiles").findOne({ email });
+            if (!user) {
+                console.log("❌ User not found:", email);
+                return res.status(401).json({ error: "Invalid credentials" });
+            }
+        }
+        const match = await bcrypt_1.default.compare(password, user.password);
+        console.log("🔐 Password match:", match);
+        if (!match) {
+            console.log("❌ Password mismatch for user:", user.email);
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+        console.log("✅ Sign-in successful:", user.email);
+        return res.json({
+            success: true,
+            user: {
+                id: user._id.toString(),
+                email: user.email,
+                full_name: user.full_name,
+                role: user.role,
+            },
+        });
     }
-    catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal error' });
+    catch (error) {
+        console.error("❌ Signin error:", error);
+        return res.status(500).json({ error: "Failed to sign in" });
     }
 });
-router.get('/session', async (req, res) => {
-    const auth = req.headers.authorization?.split(' ')[1];
-    if (!auth)
-        return res.json({ session: null });
+router.get("/session", (req, res) => {
     try {
-        const payload = jsonwebtoken_1.default.verify(auth, JWT_SECRET);
-        res.json({ session: { user: { id: payload.sub, email: payload.email } } });
+        return res.json({ success: true, user: null });
     }
-    catch (err) {
-        return res.json({ session: null });
+    catch (error) {
+        console.error("❌ Session error:", error);
+        return res.status(500).json({ error: "Failed to get session" });
+    }
+});
+// Debug endpoint - check if student exists
+router.get("/debug/student/:rollNumber", async (req, res) => {
+    try {
+        const { rollNumber } = req.params;
+        const db = (0, mongo_1.getDb)();
+        const student = await db.collection("students").findOne({ roll_number: rollNumber });
+        const profile = student
+            ? await db.collection("profiles").findOne({ _id: new mongodb_1.ObjectId(student.profile_id) })
+            : null;
+        return res.json({
+            student: student ? { roll_number: student.roll_number, profile_id: student.profile_id } : null,
+            profile: profile ? { email: profile.email, full_name: profile.full_name } : null,
+        });
+    }
+    catch (error) {
+        console.error("Debug error:", error);
+        return res.status(500).json({ error: "Debug error" });
     }
 });
 exports.default = router;

@@ -125,7 +125,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ error: 'Invalid student ID' });
     }
@@ -149,7 +149,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ error: 'Invalid student ID' });
     }

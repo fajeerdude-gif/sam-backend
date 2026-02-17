@@ -45,10 +45,10 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const db = getDb();
 
-    await db.collection('subjects').deleteOne({ _id: new ObjectId(_id) });
+    await db.collection('subjects').deleteOne({ _id: new ObjectId(id) });
 
     res.json({ success: true });
   } catch (error) {
