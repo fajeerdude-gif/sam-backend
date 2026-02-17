@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "node node_modules/typescript/bin/tsc.js",
+    "build": "tsc",
     "start": "node dist/index.js"
   },
   "dependencies": {
