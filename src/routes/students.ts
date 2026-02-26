@@ -131,16 +131,47 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     const db = getDb();
-    const result = await db.collection('students').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { ...req.body, updated_at: new Date() } }
-    );
+    const { full_name, password, ...studentData } = req.body;
 
-    if (result.matchedCount === 0) {
+    // Find student to get linked profile_id
+    const student = await db.collection('students').findOne({ _id: new ObjectId(id) });
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    return res.json({ success: true, modifiedCount: result.modifiedCount });
+    // Update student fields
+    const studentResult = await db.collection('students').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { ...studentData, updated_at: new Date() } }
+    );
+
+    // Update profile fields if student has a profile_id
+    let profileResult = { modifiedCount: 0 };
+    if (student.profile_id && (full_name || password)) {
+      const profileUpdate: any = {};
+      if (full_name) profileUpdate.full_name = full_name;
+      if (password) profileUpdate.password = await bcrypt.hash(password, 10);
+
+      if (ObjectId.isValid(student.profile_id)) {
+        profileResult = await db.collection('profiles').updateOne(
+          { _id: new ObjectId(student.profile_id) },
+          { $set: profileUpdate }
+        );
+      } else {
+        // fallback: try by email pattern
+        const email = `${student.roll_number}@student.local`;
+        profileResult = await db.collection('profiles').updateOne(
+          { email },
+          { $set: profileUpdate }
+        );
+      }
+    }
+
+    return res.json({
+      success: true,
+      studentModified: studentResult.modifiedCount,
+      profileModified: profileResult.modifiedCount,
+    });
   } catch (error) {
     console.error('Error updating student:', error);
     return res.status(500).json({ error: 'Failed to update student' });
