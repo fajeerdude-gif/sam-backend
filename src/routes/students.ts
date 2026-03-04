@@ -24,7 +24,7 @@ router.get('/', async (req: Request, res: Response) => {
     // For each student, fetch their profile data to get full_name
     const enrichedStudents = await Promise.all(
       students.map(async (student) => {
-        let full_name = null;
+        let full_name = student.full_name || null; // prefer stored name
         let email = null;
 
         if (student.profile_id) {
@@ -35,7 +35,7 @@ router.get('/', async (req: Request, res: Response) => {
               _id: profileObjId,
             });
             if (profile) {
-              full_name = profile.full_name;
+              if (!full_name) full_name = profile.full_name;
               email = profile.email;
             }
           } catch (e: any) {
@@ -45,7 +45,7 @@ router.get('/', async (req: Request, res: Response) => {
 
         return {
           ...student,
-          full_name: full_name || "Unknown",
+          full_name: full_name || "",
           email,
         };
       })
@@ -98,6 +98,7 @@ router.post('/', async (req: Request, res: Response) => {
     // Create student record
     const studentResult = await db.collection('students').insertOne({
       roll_number,
+      full_name,                    // store name locally
       year_of_study: Number(year_of_study),
       gender: gender || null,
       phone_number: phone_number || null,
@@ -135,6 +136,10 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const db = getDb();
     const { full_name, password, ...studentData } = req.body;
+    // if full_name provided, store in student data as well
+    if (full_name) {
+      studentData.full_name = full_name;
+    }
 
     // Find student to get linked profile_id
     const student = await db.collection('students').findOne({ _id: new ObjectId(id) });
