@@ -1,4 +1,6 @@
 import express, { Request, Response } from 'express';
+// cors typings sometimes missing in build environments, keep the ambient declaration file or ignore.
+// @ts-ignore
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectToDb } from "./mongo";
