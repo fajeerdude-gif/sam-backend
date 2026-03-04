@@ -27,3 +27,24 @@ cd server
 npm install
 npm run dev
 ```
+
+Create a local `.env` safely
+
+1. From PowerShell (Windows):
+
+```powershell
+cd server
+.
+\scripts\generate-env.ps1
+# Then edit .env in the server folder and fill values
+```
+
+2. From macOS/Linux:
+
+```bash
+cd server
+./scripts/generate-env.sh
+# Then edit .env in the server folder and fill values
+```
+
+Important: Do NOT commit `server/.env`. The repository includes `.env.example` as a template.
