@@ -9,7 +9,6 @@ router.post("/signup", async (req: Request, res: Response) => {
   try {
     const { email, password, full_name, role } = req.body;
 
-    // ✅ Role is optional, defaults to 'student'
     if (!email || typeof email !== "string")
       return res.status(400).json({ error: "Valid email required" });
     if (!password || password.length < 6)
@@ -17,10 +16,12 @@ router.post("/signup", async (req: Request, res: Response) => {
     if (!full_name || typeof full_name !== "string")
       return res.status(400).json({ error: "Full name required" });
 
-    const userRole =
-      role && ["student", "faculty", "admin"].includes(role)
-        ? role
-        : "student"; // ✅ Default to student
+    // Only students can self-signup. Faculty must be created by admin only.
+    if (role === "faculty" || role === "admin") {
+      return res.status(403).json({ error: "Faculty and admin accounts must be created by an administrator" });
+    }
+
+    const userRole = "student"; // Always default to student
 
     const db = getDb();
     const existing = await db.collection("profiles").findOne({ email });
@@ -146,6 +147,60 @@ router.get("/debug/student/:rollNumber", async (req: Request, res: Response) => 
   } catch (error) {
     console.error("Debug error:", error);
     return res.status(500).json({ error: "Debug error" });
+  }
+});
+
+// Admin endpoint - create faculty account (admin only)
+router.post("/admin/create-faculty", async (req: Request, res: Response) => {
+  try {
+    const { email, password, full_name, admin_email, admin_password } = req.body;
+
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: "Email, password, and name required" });
+    }
+
+    // Verify admin credentials
+    const db = getDb();
+    const adminUser = await db.collection("profiles").findOne({ email: admin_email, role: "admin" });
+    
+    if (!adminUser) {
+      return res.status(403).json({ error: "Admin credentials invalid" });
+    }
+
+    const adminPasswordMatch = await bcrypt.compare(admin_password, adminUser.password);
+    if (!adminPasswordMatch) {
+      return res.status(403).json({ error: "Admin credentials invalid" });
+    }
+
+    // Check if faculty email already exists
+    const existing = await db.collection("profiles").findOne({ email });
+    if (existing) {
+      return res.status(409).json({ error: "Faculty email already registered" });
+    }
+
+    // Create faculty account
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await db.collection("profiles").insertOne({
+      email,
+      password: hashedPassword,
+      full_name,
+      role: "faculty",
+      created_at: new Date(),
+      created_by_admin: admin_email,
+    });
+
+    return res.status(201).json({
+      success: true,
+      faculty: {
+        id: result.insertedId.toString(),
+        email,
+        full_name,
+        role: "faculty",
+      },
+    });
+  } catch (error) {
+    console.error("❌ Create faculty error:", error);
+    return res.status(500).json({ error: "Failed to create faculty account" });
   }
 });
 
