@@ -167,7 +167,36 @@ router.put('/:id', async (req: Request, res: Response) => {
       }
     }
 
-    return res.json({
+    // Fetch and return updated student with profile data
+    const pipeline: any[] = [{ $match: { _id: new ObjectId(id) } }];
+    pipeline.push({
+      $addFields: { profileObjId: { $cond: [{ $ifNull: ['$profile_id', false] }, { $toObjectId: '$profile_id' }, null] } },
+    });
+    pipeline.push({
+      $lookup: {
+        from: 'profiles',
+        localField: 'profileObjId',
+        foreignField: '_id',
+        as: 'profile',
+      },
+    });
+    pipeline.push({ $unwind: { path: '$profile', preserveNullAndEmptyArrays: true } });
+    pipeline.push({
+      $project: {
+        roll_number: 1,
+        year_of_study: 1,
+        gender: 1,
+        phone_number: 1,
+        branch_code: 1,
+        created_at: 1,
+        profile_id: 1,
+        full_name: '$profile.full_name',
+        email: '$profile.email',
+      },
+    });
+
+    const updatedStudent = await db.collection('students').aggregate(pipeline).next();
+    return res.json(updatedStudent || {
       success: true,
       studentModified: studentResult.modifiedCount,
       profileModified: profileResult.modifiedCount,
