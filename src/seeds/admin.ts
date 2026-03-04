@@ -1,26 +1,24 @@
+import dotenv from "dotenv";
 import { getDb, connectToDb, closeDb } from "../mongo";
 import bcrypt from "bcrypt";
+
+// Load .env for standalone seed script (ensures MONGODB_URI is available)
+dotenv.config();
 
 async function seedAdmin() {
   try {
     await connectToDb();
     const db = getDb();
 
-    // Check if admin already exists
-    const existingAdmin = await db.collection("profiles").findOne({
+    // Delete existing admin if present (to re-seed with correct password)
+    await db.collection("profiles").deleteOne({
       email: "admin@smgs.com",
       role: "admin",
     });
 
-    if (existingAdmin) {
-      console.log("✅ Admin already exists with email: admin@smgs.com");
-      await closeDb();
-      return;
-    }
-
     // Create super admin with hardcoded credentials
     const adminEmail = "admin@smgs.com";
-    const adminPassword = "Admin@123456"; // Change this to a secure password!
+    const adminPassword = "Admin@123456";
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     const result = await db.collection("profiles").insertOne({
