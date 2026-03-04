@@ -29,21 +29,23 @@ router.get('/', async (req: Request, res: Response) => {
 
         if (student.profile_id) {
           try {
+            // profile_id is stored as string, convert to ObjectId
+            const profileObjId = new ObjectId(student.profile_id);
             const profile = await db.collection('profiles').findOne({
-              _id: new ObjectId(student.profile_id),
+              _id: profileObjId,
             });
             if (profile) {
               full_name = profile.full_name;
               email = profile.email;
             }
-          } catch (e) {
-            console.error(`Error fetching profile for student ${student._id}:`, e);
+          } catch (e: any) {
+            console.error(`Error ${student.roll_number} fetching profile ${student.profile_id}:`, e.message);
           }
         }
 
         return {
           ...student,
-          full_name,
+          full_name: full_name || "Unknown",
           email,
         };
       })
@@ -173,22 +175,23 @@ router.put('/:id', async (req: Request, res: Response) => {
     let updatedEmail = null;
     if (student.profile_id) {
       try {
+        const profileObjId = new ObjectId(student.profile_id);
         const profile = await db.collection('profiles').findOne({
-          _id: new ObjectId(student.profile_id),
+          _id: profileObjId,
         });
         if (profile) {
           updatedFull_name = profile.full_name;
           updatedEmail = profile.email;
         }
-      } catch (e) {
-        console.error(`Error fetching profile for student ${id}:`, e);
+      } catch (e: any) {
+        console.error(`Error ${student.roll_number} fetching profile ${student.profile_id}:`, e.message);
       }
     }
 
     const updatedStudent = await db.collection('students').findOne({ _id: new ObjectId(id) });
     return res.json({
       ...updatedStudent,
-      full_name: updatedFull_name,
+      full_name: updatedFull_name || "Unknown",
       email: updatedEmail,
     });
   } catch (error) {
