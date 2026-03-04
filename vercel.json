@@ -1,0 +1,17 @@
+// Runs the backend using @vercel/node. Placed at server/vercel.json so the
+// root-level `smgs-backend` project picks it up (not inside src/).
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/**/*.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/index.ts"
+    }
+  ]
+}
