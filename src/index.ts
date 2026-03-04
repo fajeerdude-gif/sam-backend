@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 // cors typings sometimes missing in build environments, keep the ambient declaration file or ignore.
-// @ts-ignore
-import cors from 'cors';
+// import cors using require so TS doesn't try to resolve types during build
+const cors = require('cors');
 import dotenv from 'dotenv';
 import { connectToDb } from "./mongo";
 import authRoutes from './routes/auth';
