@@ -15,40 +15,41 @@ router.get('/', async (req: Request, res: Response) => {
     if (year_of_study) query.year_of_study = Number(year_of_study);
     if (branch_code) query.branch_code = branch_code;
 
-    // Use aggregation to join profile data so frontend can display student full name
-    const pipeline: any[] = [];
-    if (Object.keys(query).length) pipeline.push({ $match: query });
-    // sort by created_at desc (most recent first)
-    pipeline.push({ $sort: { created_at: -1 } });
-    // lookup profile by converting stored profile_id (string) to ObjectId
-    pipeline.push({
-      $addFields: { profileObjId: { $cond: [{ $ifNull: ['$profile_id', false] }, { $toObjectId: '$profile_id' }, null] } },
-    });
-    pipeline.push({
-      $lookup: {
-        from: 'profiles',
-        localField: 'profileObjId',
-        foreignField: '_id',
-        as: 'profile',
-      },
-    });
-    pipeline.push({ $unwind: { path: '$profile', preserveNullAndEmptyArrays: true } });
-    pipeline.push({
-      $project: {
-        roll_number: 1,
-        year_of_study: 1,
-        gender: 1,
-        phone_number: 1,
-        branch_code: 1,
-        created_at: 1,
-        profile_id: 1,
-        full_name: '$profile.full_name',
-        email: '$profile.email',
-      },
-    });
+    // Fetch students
+    const students = await db.collection('students')
+      .find(query)
+      .sort({ created_at: -1 })
+      .toArray();
 
-    const students = await db.collection('students').aggregate(pipeline).toArray();
-    return res.json(students);
+    // For each student, fetch their profile data to get full_name
+    const enrichedStudents = await Promise.all(
+      students.map(async (student) => {
+        let full_name = null;
+        let email = null;
+
+        if (student.profile_id) {
+          try {
+            const profile = await db.collection('profiles').findOne({
+              _id: new ObjectId(student.profile_id),
+            });
+            if (profile) {
+              full_name = profile.full_name;
+              email = profile.email;
+            }
+          } catch (e) {
+            console.error(`Error fetching profile for student ${student._id}:`, e);
+          }
+        }
+
+        return {
+          ...student,
+          full_name,
+          email,
+        };
+      })
+    );
+
+    return res.json(enrichedStudents);
   } catch (error) {
     console.error('Error fetching students:', error);
     return res.status(500).json({ error: 'Failed to fetch students' });
@@ -168,38 +169,27 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     // Fetch and return updated student with profile data
-    const pipeline: any[] = [{ $match: { _id: new ObjectId(id) } }];
-    pipeline.push({
-      $addFields: { profileObjId: { $cond: [{ $ifNull: ['$profile_id', false] }, { $toObjectId: '$profile_id' }, null] } },
-    });
-    pipeline.push({
-      $lookup: {
-        from: 'profiles',
-        localField: 'profileObjId',
-        foreignField: '_id',
-        as: 'profile',
-      },
-    });
-    pipeline.push({ $unwind: { path: '$profile', preserveNullAndEmptyArrays: true } });
-    pipeline.push({
-      $project: {
-        roll_number: 1,
-        year_of_study: 1,
-        gender: 1,
-        phone_number: 1,
-        branch_code: 1,
-        created_at: 1,
-        profile_id: 1,
-        full_name: '$profile.full_name',
-        email: '$profile.email',
-      },
-    });
+    let updatedFull_name = null;
+    let updatedEmail = null;
+    if (student.profile_id) {
+      try {
+        const profile = await db.collection('profiles').findOne({
+          _id: new ObjectId(student.profile_id),
+        });
+        if (profile) {
+          updatedFull_name = profile.full_name;
+          updatedEmail = profile.email;
+        }
+      } catch (e) {
+        console.error(`Error fetching profile for student ${id}:`, e);
+      }
+    }
 
-    const updatedStudent = await db.collection('students').aggregate(pipeline).next();
-    return res.json(updatedStudent || {
-      success: true,
-      studentModified: studentResult.modifiedCount,
-      profileModified: profileResult.modifiedCount,
+    const updatedStudent = await db.collection('students').findOne({ _id: new ObjectId(id) });
+    return res.json({
+      ...updatedStudent,
+      full_name: updatedFull_name,
+      email: updatedEmail,
     });
   } catch (error) {
     console.error('Error updating student:', error);
