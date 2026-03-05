@@ -124,7 +124,7 @@ marks.put('/:id', async (req: Request, res: Response) => {
     const db = getDb();
 
     // Get the existing mark to check faculty assignment
-    const existingMark = await db.collection('marks').findOne({ _id: new ObjectId(id) });
+    const existingMark = await db.collection('marks').findOne({ _id: new ObjectId(id as string) });
     if (!existingMark) {
       return res.status(404).json({ error: 'Mark not found' });
     }
@@ -152,7 +152,7 @@ marks.put('/:id', async (req: Request, res: Response) => {
     updateData.updated_at = new Date();
 
     await db.collection('marks').updateOne(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(id as string) },
       { $set: updateData }
     );
 
