@@ -150,59 +150,45 @@ router.get("/debug/student/:rollNumber", async (req: Request, res: Response) => 
   }
 });
 
-// Admin endpoint - create faculty account (admin only)
-router.post("/admin/create-faculty", async (req: Request, res: Response) => {
+// Change password endpoint
+router.post("/change-password", async (req: Request, res: Response) => {
   try {
-    const { email, password, full_name, admin_email, admin_password, assigned_subjects } = req.body;
+    const { user_id, current_password, new_password } = req.body;
 
-    if (!email || !password || !full_name) {
-      return res.status(400).json({ error: "Email, password, and name required" });
+    if (!user_id || !current_password || !new_password) {
+      return res.status(400).json({ error: "User ID, current password, and new password required" });
     }
 
-    // Verify admin credentials
+    if (new_password.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
     const db = getDb();
-    const adminUser = await db.collection("profiles").findOne({ email: admin_email, role: "admin" });
-    
-    if (!adminUser) {
-      return res.status(403).json({ error: "Admin credentials invalid" });
+    const user = await db.collection("profiles").findOne({ _id: new ObjectId(user_id) });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    const adminPasswordMatch = await bcrypt.compare(admin_password, adminUser.password);
-    if (!adminPasswordMatch) {
-      return res.status(403).json({ error: "Admin credentials invalid" });
+    // Verify current password
+    const currentPasswordMatch = await bcrypt.compare(current_password, user.password);
+    if (!currentPasswordMatch) {
+      return res.status(401).json({ error: "Current password is incorrect" });
     }
 
-    // Check if faculty email already exists
-    const existing = await db.collection("profiles").findOne({ email });
-    if (existing) {
-      return res.status(409).json({ error: "Faculty email already registered" });
-    }
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(new_password, 10);
 
-    // Create faculty account
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await db.collection("profiles").insertOne({
-      email,
-      password: hashedPassword,
-      full_name,
-      role: "faculty",
-      assigned_subjects: assigned_subjects || [],
-      created_at: new Date(),
-      created_by_admin: admin_email,
-    });
+    // Update password
+    await db.collection("profiles").updateOne(
+      { _id: new ObjectId(user_id) },
+      { $set: { password: hashedNewPassword } }
+    );
 
-    return res.status(201).json({
-      success: true,
-      faculty: {
-        id: result.insertedId.toString(),
-        email,
-        full_name,
-        role: "faculty",
-        assigned_subjects: assigned_subjects || [],
-      },
-    });
+    return res.json({ success: true, message: "Password changed successfully" });
   } catch (error) {
-    console.error("Create faculty error:", error);
-    return res.status(500).json({ error: "Failed to create faculty account" });
+    console.error("Change password error:", error);
+    return res.status(500).json({ error: "Failed to change password" });
   }
 });
 
