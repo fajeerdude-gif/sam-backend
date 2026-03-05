@@ -22,7 +22,16 @@ router.get('/', async (req: Request, res: Response) => {
     const studentIds = await db.collection('students').find(studentQuery).project({ _id: 1 }).toArray();
     const studentIdSet = new Set(studentIds.map((s: any) => s._id.toString()));
 
-    const totalSubjects = await db.collection('subjects').countDocuments();
+    // Calculate semester range for the selected year
+    let semesterQuery: any = {};
+    if (year) {
+      const yearNum = Number(year);
+      const startSemester = (yearNum - 1) * 2 + 1; // Year 1: 1-2, Year 2: 3-4, Year 3: 5-6
+      const endSemester = yearNum * 2;
+      semesterQuery.semester = { $gte: startSemester, $lte: endSemester };
+    }
+
+    const totalSubjects = await db.collection('subjects').countDocuments(semesterQuery);
 
     // Today's date string (assumes attendance.date stored as ISO string YYYY-MM-DD)
     const today = new Date();
