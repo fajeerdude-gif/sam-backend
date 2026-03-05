@@ -69,7 +69,26 @@ marks.post('/', async (req: Request, res: Response) => {
       entered_by,
     } = req.body;
 
+    if (!entered_by) {
+      return res.status(400).json({ error: 'Faculty ID (entered_by) is required' });
+    }
+
     const db = getDb();
+
+    // Validate that faculty has this subject assigned
+    const facultyProfile = await db.collection('profiles').findOne({
+      _id: new ObjectId(entered_by),
+      role: 'faculty',
+    });
+
+    if (!facultyProfile) {
+      return res.status(403).json({ error: 'Faculty not found' });
+    }
+
+    if (!facultyProfile.assigned_subjects || !facultyProfile.assigned_subjects.includes(subject_id)) {
+      return res.status(403).json({ error: 'You are not assigned to this subject' });
+    }
+
     const result = await db.collection('marks').insertOne({
       student_id: new ObjectId(student_id),
       subject_id: new ObjectId(subject_id),
@@ -85,6 +104,62 @@ marks.post('/', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error creating marks:', error);
     res.status(500).json({ error: 'Failed to create marks' });
+  }
+});
+
+marks.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      marks_obtained,
+      total_marks,
+      exam_type,
+      entered_by,
+    } = req.body;
+
+    if (!entered_by) {
+      return res.status(400).json({ error: 'Faculty ID (entered_by) is required' });
+    }
+
+    const db = getDb();
+
+    // Get the existing mark to check faculty assignment
+    const existingMark = await db.collection('marks').findOne({ _id: new ObjectId(id) });
+    if (!existingMark) {
+      return res.status(404).json({ error: 'Mark not found' });
+    }
+
+    // Validate that faculty has this subject assigned
+    const facultyProfile = await db.collection('profiles').findOne({
+      _id: new ObjectId(entered_by),
+      role: 'faculty',
+    });
+
+    if (!facultyProfile) {
+      return res.status(403).json({ error: 'Faculty not found' });
+    }
+
+    const subjectId = existingMark.subject_id.toString();
+    if (!facultyProfile.assigned_subjects || !facultyProfile.assigned_subjects.includes(subjectId)) {
+      return res.status(403).json({ error: 'You are not assigned to this subject' });
+    }
+
+    // Update the mark
+    const updateData: any = {};
+    if (marks_obtained !== undefined) updateData.marks_obtained = marks_obtained;
+    if (total_marks !== undefined) updateData.total_marks = total_marks;
+    if (exam_type !== undefined) updateData.exam_type = exam_type;
+    updateData.updated_at = new Date();
+
+    await db.collection('marks').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    res.json({ success: true, message: 'Mark updated successfully' });
+  } catch (error) {
+    console.error('Error updating marks:', error);
+    res.status(500).json({ error: 'Failed to update marks' });
   }
 });
 
