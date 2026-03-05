@@ -54,6 +54,69 @@ router.post("/signup", async (req: Request, res: Response) => {
   }
 });
 
+// Admin-only route: create a faculty account. Admin must provide their credentials
+router.post("/admin/create-faculty", async (req: Request, res: Response) => {
+  try {
+    const { email, password, full_name, admin_email, admin_password, assigned_subjects } = req.body;
+
+    if (!email || typeof email !== "string")
+      return res.status(400).json({ error: "Valid faculty email required" });
+    if (!password || typeof password !== "string" || password.length < 6)
+      return res.status(400).json({ error: "Faculty password must be at least 6 characters" });
+    if (!full_name || typeof full_name !== "string")
+      return res.status(400).json({ error: "Faculty full name required" });
+    if (!admin_email || typeof admin_email !== "string")
+      return res.status(400).json({ error: "Admin email required" });
+    if (!admin_password || typeof admin_password !== "string")
+      return res.status(400).json({ error: "Admin password required" });
+
+    const db = getDb();
+
+    // verify admin credentials
+    const admin = await db.collection("profiles").findOne({ email: admin_email, role: "admin" });
+    if (!admin) {
+      return res.status(401).json({ error: "Invalid administrator credentials" });
+    }
+
+    const match = await bcrypt.compare(admin_password, admin.password);
+    if (!match) {
+      return res.status(401).json({ error: "Invalid administrator credentials" });
+    }
+
+    // ensure faculty email isn't taken
+    const existing = await db.collection("profiles").findOne({ email });
+    if (existing) {
+      return res.status(409).json({ error: "Email already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const profile: any = {
+      email,
+      password: hashedPassword,
+      full_name,
+      role: "faculty",
+      assigned_subjects: Array.isArray(assigned_subjects) ? assigned_subjects : [],
+      created_at: new Date(),
+    };
+
+    const result = await db.collection("profiles").insertOne(profile);
+
+    res.status(201).json({
+      success: true,
+      user: {
+        id: result.insertedId.toString(),
+        email,
+        full_name,
+        role: "faculty",
+      },
+    });
+  } catch (error) {
+    console.error("Error creating faculty via admin:", error);
+    res.status(500).json({ error: "Failed to create faculty" });
+  }
+});
+
+
 router.post("/signin", async (req: Request, res: Response) => {
   try {
     const { email, password, roll_number, role } = req.body;
