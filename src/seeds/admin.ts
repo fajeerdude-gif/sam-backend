@@ -29,15 +29,10 @@ async function seedAdmin() {
       created_at: new Date(),
     });
 
-    console.log("✅ Super admin created successfully!");
-    console.log("📧 Email: admin@smgs.com");
-    console.log("🔑 Password: Admin@123456");
-    console.log("⚠️  IMPORTANT: Change this password immediately in production!");
-    console.log("Admin ID:", result.insertedId.toString());
 
     await closeDb();
   } catch (error) {
-    console.error("❌ Error seeding admin:", error);
+    console.error("Error seeding admin:", error);
     process.exit(1);
   }
 }

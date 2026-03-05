@@ -49,7 +49,7 @@ router.post("/signup", async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("❌ Signup error:", error);
+    console.error("Signup error:", error);
     return res.status(500).json({ error: "Failed to sign up" });
   }
 });
@@ -57,7 +57,7 @@ router.post("/signup", async (req: Request, res: Response) => {
 router.post("/signin", async (req: Request, res: Response) => {
   try {
     const { email, password, roll_number, role } = req.body;
-    console.log("📝 Sign-in attempt:", { roll_number, role, email: email ? "***" : "none" });
+    console.log("Sign-in attempt:", { roll_number, role, email: email ? "***" : "none" });
 
     const db = getDb();
     let user;
@@ -69,18 +69,18 @@ router.post("/signin", async (req: Request, res: Response) => {
       }
       
       const student = await db.collection("students").findOne({ roll_number });
-      console.log("🔍 Student lookup:", { roll_number, found: !!student, profile_id: student?.profile_id });
+      console.log("Student lookup:", { roll_number, found: !!student, profile_id: student?.profile_id });
       
       if (!student) {
-        console.log("❌ Student not found:", roll_number);
+        console.log("Student not found:", roll_number);
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
       user = await db.collection("profiles").findOne({ _id: new ObjectId(student.profile_id) });
-      console.log("🔍 Profile lookup:", { found: !!user, email: user?.email });
+      console.log("Profile lookup:", { found: !!user, email: user?.email });
       
       if (!user) {
-        console.log("❌ Profile not found for student:", roll_number);
+        console.log("Profile not found for student:", roll_number);
         return res.status(401).json({ error: "Invalid credentials" });
       }
     } else {
@@ -91,20 +91,20 @@ router.post("/signin", async (req: Request, res: Response) => {
 
       user = await db.collection("profiles").findOne({ email });
       if (!user) {
-        console.log("❌ User not found:", email);
+        console.log("User not found:", email);
         return res.status(401).json({ error: "Invalid credentials" });
       }
     }
 
     const match = await bcrypt.compare(password, user.password);
-    console.log("🔐 Password match:", match);
+    console.log("Password match:", match);
     
     if (!match) {
-      console.log("❌ Password mismatch for user:", user.email);
+      console.log("Password mismatch for user:", user.email);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    console.log("✅ Sign-in successful:", user.email);
+    console.log("Sign-in successful:", user.email);
     return res.json({
       success: true,
       user: {
@@ -115,7 +115,7 @@ router.post("/signin", async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("❌ Signin error:", error);
+    console.error("Signin error:", error);
     return res.status(500).json({ error: "Failed to sign in" });
   }
 });
@@ -124,7 +124,7 @@ router.get("/session", (req: Request, res: Response) => {
   try {
     return res.json({ success: true, user: null });
   } catch (error) {
-    console.error("❌ Session error:", error);
+    console.error("Session error:", error);
     return res.status(500).json({ error: "Failed to get session" });
   }
 });
@@ -153,7 +153,7 @@ router.get("/debug/student/:rollNumber", async (req: Request, res: Response) => 
 // Admin endpoint - create faculty account (admin only)
 router.post("/admin/create-faculty", async (req: Request, res: Response) => {
   try {
-    const { email, password, full_name, admin_email, admin_password } = req.body;
+    const { email, password, full_name, admin_email, admin_password, assigned_subjects } = req.body;
 
     if (!email || !password || !full_name) {
       return res.status(400).json({ error: "Email, password, and name required" });
@@ -185,6 +185,7 @@ router.post("/admin/create-faculty", async (req: Request, res: Response) => {
       password: hashedPassword,
       full_name,
       role: "faculty",
+      assigned_subjects: assigned_subjects || [],
       created_at: new Date(),
       created_by_admin: admin_email,
     });
@@ -196,10 +197,11 @@ router.post("/admin/create-faculty", async (req: Request, res: Response) => {
         email,
         full_name,
         role: "faculty",
+        assigned_subjects: assigned_subjects || [],
       },
     });
   } catch (error) {
-    console.error("❌ Create faculty error:", error);
+    console.error("Create faculty error:", error);
     return res.status(500).json({ error: "Failed to create faculty account" });
   }
 });
