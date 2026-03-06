@@ -6,13 +6,22 @@ const router = Router();
 
 router.get('/', async (req, res) => {
   try {
-    const { user_id } = req.query;
+    const { user_id, _id } = req.query;
     const db = getDb();
     const profiles = db.collection('profiles');
+    
+    // Query by _id (MongoDB document ID) - for faculty/admin
+    if (_id) {
+      const profile = await profiles.findOne({ _id: new ObjectId(_id.toString()) });
+      return res.json(profile);
+    }
+    
+    // Query by user_id field - for backward compatibility
     if (user_id) {
       const profile = await profiles.findOne({ user_id: user_id.toString() });
       return res.json(profile);
     }
+    
     const all = await profiles.find().toArray();
     res.json(all);
   } catch (err) {
@@ -74,6 +83,32 @@ router.put('/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update faculty' });
+  }
+});
+
+// Delete faculty profile (admin only)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+
+    // Validate faculty exists
+    const faculty = await db.collection('profiles').findOne({ _id: new ObjectId(id), role: 'faculty' });
+    if (!faculty) {
+      return res.status(404).json({ error: 'Faculty not found' });
+    }
+
+    // Delete the faculty profile
+    const result = await db.collection('profiles').deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(400).json({ error: 'Failed to delete faculty' });
+    }
+
+    res.json({ success: true, message: 'Faculty deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete faculty' });
   }
 });
 
