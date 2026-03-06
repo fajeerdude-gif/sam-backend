@@ -30,8 +30,7 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-// POST many attendance records at once
-// body: { records: [{ student_id, date, periods_present, total_periods? (default 7) , marked_by }] }
+
 router.post("/", async (req: Request, res: Response) => {
   try {
     const db = getDb();

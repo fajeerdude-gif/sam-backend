@@ -41,7 +41,7 @@ async function seedSubjects() {
     { code: 'AP207', name: 'Electronics Lab', semester: 2, branch_code: 'AP', type: 'lab', marks: { sessional: 40, external: 60 } },
 
     // Year 2 - Semester 3
-    { code: 'CM301', name: 'Mathematics – II', semester: 3, branch_code: 'DCME', type: 'theory', marks: { ut: 20, external: 80 } },
+    { code: 'CM301', name: 'Mathematics  II', semester: 3, branch_code: 'DCME', type: 'theory', marks: { ut: 20, external: 80 } },
     { code: 'CM302', name: 'Digital Electronics', semester: 3, branch_code: 'DCME', type: 'theory', marks: { ut: 20, external: 80 } },
     { code: 'CM303', name: 'Operating System', semester: 3, branch_code: 'DCME', type: 'theory', marks: { ut: 20, external: 80 } },
     { code: 'CM304', name: 'DSC', semester: 3, branch_code: 'DCME', type: 'theory', marks: { ut: 20, external: 80 } },
@@ -84,6 +84,6 @@ async function seedSubjects() {
 }
 
 seedSubjects().catch((err) => {
-  console.error('❌ Seed failed:', err);
+  console.error('Seed failed:', err);
   process.exit(1);
 });

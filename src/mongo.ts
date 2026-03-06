@@ -10,7 +10,7 @@ export async function connectToDb() {
       throw new Error('MONGODB_URI not set in .env');
     }
 
-    console.log('🔗 Connecting to MongoDB...');
+    // console.log('Connecting to MongoDB...');
     
     client = new MongoClient(uri, {
       tlsAllowInvalidCertificates: process.env.NODE_ENV !== 'production', // Dev fix for Atlas SSL
@@ -20,10 +20,10 @@ export async function connectToDb() {
     
     await client.connect();
     db = client.db();
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
     return db;
   } catch (error) {
-    console.error('❌ Failed to connect to DB:', error);
+    console.error('Failed to connect to DB:', error);
     throw error;
   }
 }
@@ -38,6 +38,6 @@ export function getDb(): Db {
 export async function closeDb() {
   if (client) {
     await client.close();
-    console.log('✅ MongoDB connection closed');
+    console.log('MongoDB connection closed');
   }
 }
