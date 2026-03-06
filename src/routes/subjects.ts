@@ -23,7 +23,7 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { code, name, semester, branch_code, type, marks } = req.body;
+    const { code, name, semester, branch_code, type, marks, created_by } = req.body;
 
     const db = getDb();
     const result = await db.collection('subjects').insertOne({
@@ -35,6 +35,18 @@ router.post('/', async (req: Request, res: Response) => {
       marks, // { ut: 20, external: 80 } or { sessional: 40, external: 60 }
       created_at: new Date(),
     });
+
+    // if a faculty id was provided, add this subject to their assigned_subjects
+    if (created_by) {
+      try {
+        await db.collection('profiles').updateOne(
+          { _id: new ObjectId(created_by), role: 'faculty' },
+          { $addToSet: { assigned_subjects: String(result.insertedId) } }
+        );
+      } catch (err) {
+        console.error('Failed to assign new subject to faculty:', err);
+      }
+    }
 
     res.json({ _id: result.insertedId, ...req.body });
   } catch (error) {

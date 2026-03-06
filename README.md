@@ -26,6 +26,13 @@ Environment variables (create a `.env` file in `server/`):
    - Password: `Admin@123456`
    - ⚠️ Change this password in production!
 
+3. (Optional) Seed subjects data for testing:
+   ```bash
+   npm run seed:subjects
+   ```
+   The script clears the `subjects` collection and inserts the predefined list used by the client UI.
+   Run it anytime you need a fresh set of subjects on your local database.
+
 ## Run Server
 
 Development:

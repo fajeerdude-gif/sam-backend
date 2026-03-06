@@ -11,7 +11,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "echo 'Build skipped - using pre-compiled dist folder'",
     "start": "node dist/index.js",
-    "seed:admin": "ts-node-dev src/seeds/admin.ts"
+    "seed:admin": "ts-node-dev src/seeds/admin.ts",
+    "seed:subjects": "ts-node-dev src/seeds/subjects.ts"
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
