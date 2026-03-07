@@ -8,12 +8,17 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    const { profile_id, year_of_study, branch_code } = req.query;
+    const { profile_id, year_of_study, branch_code, include_passout } = req.query;
 
     let query: any = {};
     if (profile_id) query.profile_id = profile_id;
     if (year_of_study) query.year_of_study = Number(year_of_study);
     if (branch_code) query.branch_code = branch_code;
+    
+    // Exclude passout students by default unless explicitly requested
+    if (include_passout !== 'true') {
+      query.passout = { $ne: true };
+    }
 
     // Fetch students
     const students = await db.collection('students')
@@ -263,6 +268,67 @@ router.delete('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting student:', error);
     return res.status(500).json({ error: 'Failed to delete student' });
+  }
+});
+
+router.post('/promote', async (req: Request, res: Response) => {
+  try {
+    const { from_year, to_year, batch } = req.body;
+
+    if (!from_year || !to_year || !batch) {
+      return res.status(400).json({ error: 'from_year, to_year, and batch are required' });
+    }
+
+    const db = getDb();
+
+    // Get all students from the specified year
+    const students = await db.collection('students').find({ 
+      year_of_study: Number(from_year),
+      passout: { $ne: true } // Don't promote already passout students
+    }).toArray();
+
+    if (students.length === 0) {
+      return res.status(404).json({ error: `No students found in year ${from_year}` });
+    }
+
+    let promotedCount = 0;
+    let passoutCount = 0;
+
+    // Process each student
+    for (const student of students) {
+      const updateData: any = {
+        updated_at: new Date()
+      };
+
+      if (Number(to_year) === 4) {
+        // Passout students (year 3 -> passout)
+        updateData.passout = true;
+        updateData.passout_date = new Date();
+        updateData.batch = batch;
+        passoutCount++;
+      } else {
+        // Regular promotion
+        updateData.year_of_study = Number(to_year);
+        updateData.batch = batch;
+        promotedCount++;
+      }
+
+      await db.collection('students').updateOne(
+        { _id: student._id },
+        { $set: updateData }
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: `Processed ${students.length} students from year ${from_year}`,
+      promoted: promotedCount,
+      passout: passoutCount,
+      batch: batch
+    });
+  } catch (error) {
+    console.error('Error promoting students:', error);
+    return res.status(500).json({ error: 'Failed to promote students' });
   }
 });
 

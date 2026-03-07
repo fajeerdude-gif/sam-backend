@@ -12,6 +12,8 @@ import subjectsRoutes from './routes/subjects';
 import statsRoutes from './routes/stats';
 import marksRoutes from './routes/marks';
 import schemesRoutes from './routes/schemes';
+import linksRoutes from './routes/links';
+import notificationsRoutes from './routes/notifications';
 
 dotenv.config();
 
@@ -48,6 +50,8 @@ app.use('/api/subjects', subjectsRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/marks', marksRoutes);
 app.use('/api/schemes', schemesRoutes);
+app.use('/api/links', linksRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {

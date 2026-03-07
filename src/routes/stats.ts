@@ -10,7 +10,7 @@ router.get('/', async (req: Request, res: Response) => {
     const { year } = req.query; // Optional: filter by student year (1, 2, or 3)
 
     // Build student query (if year is provided)
-    let studentQuery: any = {};
+    let studentQuery: any = { passout: { $ne: true } }; // Exclude passout students
     if (year) {
       studentQuery.year_of_study = Number(year);
     }
