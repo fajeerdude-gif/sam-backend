@@ -29,9 +29,16 @@ router.get('/', async (req: Request, res: Response) => {
 // Create new notification
 router.post('/', async (req: Request, res: Response) => {
   try {
+    console.log('=== NOTIFICATION POST REQUEST ===');
+    console.log('Received body:', JSON.stringify(req.body, null, 2));
+    console.log('Content-Type:', req.headers['content-type']);
+    
     const { title, content, type, target_year, created_by, created_by_role } = req.body;
 
+    console.log('Extracted fields:', { title, content, type, target_year, created_by, created_by_role });
+
     if (!title || !content || !type) {
+      console.log('Validation failed:', { title: !!title, content: !!content, type: !!type });
       return res.status(400).json({ error: 'Title, content, and type are required' });
     }
 

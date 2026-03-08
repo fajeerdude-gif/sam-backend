@@ -24,6 +24,7 @@ const corsOptions = {
   origin: process.env.CORS_ORIGIN || '*',
 };
 app.use(cors(corsOptions));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Connect to DB
@@ -55,5 +56,6 @@ app.use('/api/notifications', notificationsRoutes);
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'OK' });
 });
+
 
 
