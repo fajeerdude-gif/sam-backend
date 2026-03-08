@@ -221,7 +221,7 @@ router.post("/change-password", async (req: Request, res: Response) => {
     if (!user_id || !current_password || !new_password) {
       return res.status(400).json({ error: "User ID, current password, and new password required" });
     }
-
+    
     if (new_password.length < 6) {
       return res.status(400).json({ error: "New password must be at least 6 characters" });
     }
