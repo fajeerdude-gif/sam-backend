@@ -22,10 +22,8 @@ const app = express();
 // CORS configuration - allow requests from deployed frontend
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || '*', // Set CORS_ORIGIN in production
-  credentials: true,
 };
 app.use(cors(corsOptions));
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Connect to DB
