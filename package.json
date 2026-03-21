@@ -21,10 +21,10 @@
     "@types/jsonwebtoken": "^9.0.10",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.6.1",
     "express": "^4.22.1",
     "jsonwebtoken": "^9.0.0",
-    "mongodb": "^5.9.0",
+    "mongodb": "^5.9.2",
     "typescript": "^5.8.3"
   },
   "devDependencies": {
