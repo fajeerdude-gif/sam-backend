@@ -22,6 +22,9 @@ const app = express();
 // CORS configuration - allow requests from deployed frontend
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || '*',
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+
 };
 app.use(cors(corsOptions));
 app.use(express.json());
