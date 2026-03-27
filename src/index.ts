@@ -19,14 +19,34 @@ dotenv.config();
 
 const app = express();
 
-// CORS configuration - allow requests from deployed frontend
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true,
+// CORS configuration - allow requests from deployed frontend and local dev
+const rawCors = process.env.CORS_ORIGIN || '';
+// support comma-separated list in env, and always allow localhost during development
+const whitelist = rawCors
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+if (process.env.NODE_ENV !== 'production') {
+  // add local dev origins used by client
+  whitelist.push('http://localhost:3002');
+  whitelist.push('http://localhost:3000');
+}
 
+const corsOptions = {
+  origin: (origin: string | undefined, callback: any) => {
+    // allow non-browser tools like curl or same-origin requests
+    if (!origin) return callback(null, true);
+    if (whitelist.length === 0) return callback(null, true);
+    if (whitelist.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
 };
+
 app.use(cors(corsOptions));
+// enable pre-flight for all routes
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
