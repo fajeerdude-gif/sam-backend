@@ -18,17 +18,34 @@ dotenv.config();
 
 const app = express();
 
-// ✅ SIMPLE & WORKING CORS (VERY IMPORTANT)
+// ✅ CORS (allow your frontend)
 app.use(
   cors({
     origin: "https://gptdmm170.vercel.app",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
 
-// ✅ Handle preflight
-app.options("*", cors());
+// ✅ Preflight fix (IMPORTANT)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://gptdmm170.vercel.app");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 // Middleware
 app.use(express.json());
@@ -46,20 +63,15 @@ app.use("/api/schemes", schemesRoutes);
 app.use("/api/links", linksRoutes);
 app.use("/api/notifications", notificationsRoutes);
 
-// Start server
-async function startServer() {
-  await connectToDb();
-
-  const PORT = Number(process.env.PORT) || 5000;
-
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}
-
-startServer();
-
 // Health check
-app.get("/health", (req: Request, res: Response) => {
+app.get("/api/health", (req: Request, res: Response) => {
   res.json({ status: "OK" });
 });
+
+// ❌ REMOVE app.listen()
+// ❌ REMOVE startServer()
+
+// ✅ CONNECT DB ON EACH REQUEST (for serverless)
+connectToDb();
+
+export default app;
