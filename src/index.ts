@@ -50,20 +50,34 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to DB
-async function startServer() {
-  await connectToDb();
+// Explicit CORS headers middleware to ensure preflight responses include necessary headers
+app.use((req: any, res: any, next: any) => {
+  const allowed = (process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const originHeader = req.headers.origin as string | undefined;
 
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
+  // If a specific origin is configured and matches the request origin, echo it back.
+  if (allowed.length > 0 && originHeader && allowed.includes(originHeader)) {
+    res.setHeader('Access-Control-Allow-Origin', originHeader);
+  } else if (allowed.length === 0) {
+    // No whitelist configured: allow all origins (useful for quick debugging)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    // Not allowed origin - still set wildcard to avoid hard CORS failures for non-browser tools
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
 
-startServer();
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
 
-// Register routes
+  next();
+});
+
+// Register routes (register before starting the server)
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profilesRoutes);
 app.use('/api/students', studentsRoutes);
@@ -74,6 +88,46 @@ app.use('/api/marks', marksRoutes);
 app.use('/api/schemes', schemesRoutes);
 app.use('/api/links', linksRoutes);
 app.use('/api/notifications', notificationsRoutes);
+
+// Connect to DB and start server with port fallback on EADDRINUSE
+async function startServer() {
+  await connectToDb();
+
+  const basePort = Number(process.env.PORT) || 5000;
+  const maxAttempts = 5;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const tryPort = basePort + i;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const server = app.listen(tryPort)
+          .once('listening', () => {
+            console.log(`Server running on http://localhost:${tryPort}`);
+            resolve();
+          })
+          .once('error', (err: any) => {
+            reject(err);
+          });
+      });
+      // started successfully
+      return;
+    } catch (err: any) {
+      if (err && err.code === 'EADDRINUSE') {
+        console.warn(`Port ${tryPort} in use, trying next port...`);
+        continue;
+      }
+      console.error('Failed to start server:', err);
+      throw err;
+    }
+  }
+
+  throw new Error(`All ports ${basePort}-${basePort + maxAttempts - 1} are in use`);
+}
+
+startServer().catch((err) => {
+  console.error('startServer error:', err);
+  process.exit(1);
+});
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
