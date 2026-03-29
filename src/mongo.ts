@@ -1,44 +1,41 @@
+// src/mongo.ts
 import { MongoClient, Db } from "mongodb";
 
-const uri = process.env.MONGODB_URI as string;
-
-if (!uri) {
-  throw new Error("❌ Please define MONGODB_URI in environment variables");
-}
-
-// 🔥 GLOBAL CACHE (VERY IMPORTANT FOR VERCEL)
-let cachedClient: MongoClient | null = null;
-let cachedDb: Db | null = null;
+let db: Db;
+let client: MongoClient;
 
 export async function connectToDb(): Promise<Db> {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error("❌ Please define MONGODB_URI in environment variables");
+  }
+
+  client = new MongoClient(uri, {
+    retryWrites: true,
+    w: "majority",
+  });
+
   try {
-    // ✅ Reuse existing connection
-    if (cachedClient && cachedDb) {
-      return cachedDb;
-    }
-
-    const client = new MongoClient(uri);
-
     await client.connect();
-
-    const db = client.db(process.env.MONGODB_DB || "test");
-
-    cachedClient = client;
-    cachedDb = db;
-
-    console.log("✅ MongoDB Connected");
-
+    db = client.db(process.env.MONGODB_DB || undefined);
+    console.log("✅ Connected to MongoDB");
     return db;
-
-  } catch (error) {
-    console.error("❌ MongoDB connection error:", error);
-    throw error;
+  } catch (err) {
+    console.error("❌ Failed to connect to MongoDB:", err);
+    throw err;
   }
 }
 
 export function getDb(): Db {
-  if (!cachedDb) {
-    throw new Error("❌ DB not connected. Call connectToDb first");
+  if (!db) {
+    throw new Error("Database not initialized. Call connectToDb() first");
   }
-  return cachedDb;
+  return db;
+}
+
+export async function closeDb() {
+  if (client) {
+    await client.close();
+    console.log("MongoDB connection closed");
+  }
 }

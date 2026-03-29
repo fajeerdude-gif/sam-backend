@@ -1,3 +1,4 @@
+// src/index.ts
 import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -9,24 +10,17 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS (TEMP allow all for debugging)
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-}));
+// ---------------- CORS ----------------
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "*", // frontend URL
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 
-// ✅ Preflight handler (VERY IMPORTANT)
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  next();
-});
+// Preflight handler
+app.options("*", cors());
 
 // Middleware
 app.use(express.json());
@@ -40,9 +34,16 @@ app.get("/api/health", (req: Request, res: Response) => {
   res.json({ status: "OK" });
 });
 
-// ✅ DB connect (serverless safe)
-connectToDb().catch(console.error);
+// ---------------- DB Connect & Start ----------------
+async function startServer() {
+  await connectToDb();
 
-// ❌ NO app.listen()
+  const PORT = Number(process.env.PORT) || 5000;
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+  });
+}
+
+startServer().catch(console.error);
 
 export default app;
