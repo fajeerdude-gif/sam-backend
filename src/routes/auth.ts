@@ -18,13 +18,16 @@ router.post("/signup", async (req: Request, res: Response) => {
 
     const db = getDb();
 
+    // Check existing user
     const existing = await db.collection("profiles").findOne({ email });
     if (existing) {
       return res.status(409).json({ error: "Email already exists" });
     }
 
+    // Hash password
     const hashed = await bcrypt.hash(password, 10);
 
+    // Insert user
     const result = await db.collection("profiles").insertOne({
       email,
       password: hashed,
@@ -33,7 +36,7 @@ router.post("/signup", async (req: Request, res: Response) => {
       created_at: new Date(),
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       user: {
         id: result.insertedId.toString(),
@@ -42,11 +45,13 @@ router.post("/signup", async (req: Request, res: Response) => {
         role: "student",
       },
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Signup failed" });
+
+  } catch (err: any) {
+    console.error("Signup error:", err);
+    return res.status(500).json({ error: "Signup failed" });
   }
 });
+
 
 // ✅ SIGNIN
 router.post("/signin", async (req: Request, res: Response) => {
@@ -54,9 +59,9 @@ router.post("/signin", async (req: Request, res: Response) => {
     const { email, password, roll_number, role } = req.body;
 
     const db = getDb();
-    let user: any;
+    let user: any = null;
 
-    // Student login with roll number
+    // 🔹 Student login (roll number)
     if (role === "student" && roll_number) {
       const student = await db
         .collection("students")
@@ -69,8 +74,9 @@ router.post("/signin", async (req: Request, res: Response) => {
       user = await db
         .collection("profiles")
         .findOne({ _id: new ObjectId(student.profile_id) });
+
     } else {
-      // Faculty/Admin login
+      // 🔹 Normal login
       if (!email || !password) {
         return res.status(400).json({ error: "Email & password required" });
       }
@@ -82,13 +88,14 @@ router.post("/signin", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const match = await bcrypt.compare(password, user.password);
+    // 🔐 Compare password safely
+    const match = await bcrypt.compare(password, user.password || "");
 
     if (!match) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    res.json({
+    return res.json({
       success: true,
       user: {
         id: user._id.toString(),
@@ -97,15 +104,21 @@ router.post("/signin", async (req: Request, res: Response) => {
         role: user.role,
       },
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Signin failed" });
+
+  } catch (err: any) {
+    console.error("Signin error:", err);
+    return res.status(500).json({ error: "Signin failed" });
   }
 });
 
-// ✅ SESSION
-router.get("/session", (req: Request, res: Response) => {
-  res.json({ success: true, user: null });
+
+// ✅ SESSION CHECK
+router.get("/session", async (req: Request, res: Response) => {
+  try {
+    return res.json({ success: true, user: null });
+  } catch (err) {
+    return res.status(500).json({ error: "Session error" });
+  }
 });
 
 export default router;
