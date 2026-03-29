@@ -49,9 +49,21 @@ async function startServer() {
     console.log(`✅ Server running on port ${PORT}`);
   });
 }
+// For Vercel serverless, export the app and initialize DB on module load.
+if (process.env.VERCEL) {
+  connectToDb().catch((err) => {
+    console.error('DB connection error (serverless):', err);
+  });
 
-startServer().catch((err) => {
-  console.error("❌ Server failed to start:", err);
-});
+  // Export as CommonJS for Vercel runtime
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  module.exports = app;
+} else {
+  startServer().catch((err) => {
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
+  });
+}
 
+// Default export for ES module consumers (keeps compatibility with local dev and tests)
 export default app;
