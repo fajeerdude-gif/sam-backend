@@ -1,41 +1,33 @@
+// src/mongo.ts
 import { MongoClient, Db } from "mongodb";
 
-let cachedDb: Db | null = null;
-let cachedClient: MongoClient | null = null;
+let db: Db;
+let client: MongoClient;
 
 export async function connectToDb(): Promise<Db> {
-  if (cachedDb) {
-    return cachedDb; // Return cached instance if available
-  }
-
   const uri = process.env.MONGODB_URI;
-  const dbName = process.env.MONGODB_DB;
+  if (!uri) throw new Error("❌ Please define MONGODB_URI in environment variables");
 
-  if (!uri) {
-    throw new Error("❌ Please define MONGODB_URI in environment variables");
-  }
+  client = new MongoClient(uri, {
+    retryWrites: true,
+    w: "majority",
+  });
 
-  const client = new MongoClient(uri, { retryWrites: true, w: "majority" });
   await client.connect();
-  const db = client.db(dbName);
+  db = client.db(process.env.MONGODB_DB || undefined);
 
-  cachedClient = client;
-  cachedDb = db;
-
-  console.log("✅ Connected to MongoDB:", dbName);
+  console.log(`✅ Connected to MongoDB: ${db.databaseName}`);
   return db;
 }
 
 export function getDb(): Db {
-  if (!cachedDb) throw new Error("❌ Database not initialized. Call connectToDb() first");
-  return cachedDb;
+  if (!db) throw new Error("Database not initialized. Call connectToDb() first");
+  return db;
 }
 
 export async function closeDb() {
-  if (cachedClient) {
-    await cachedClient.close();
-    cachedClient = null;
-    cachedDb = null;
-    console.log("✅ MongoDB connection closed");
+  if (client) {
+    await client.close();
+    console.log("MongoDB connection closed");
   }
 }
